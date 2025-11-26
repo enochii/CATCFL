@@ -1,0 +1,48 @@
+Order:
+f_i,	d,	a,	fbar_i,	dbar,	abar,	FV_i,	DV,	M,	A,	Abar,	V
+Production:
+DV	dbar	V
+FV_i	fbar_i	V
+
+M	DV	d
+V	FV_i	f_i
+
+V	Abar	V
+V	abar	V
+V	V	A
+V	V	a
+V	M
+V
+A	a	M
+Abar	M	abar
+
+Insert:
+V,	A,	Abar,
+
+Follow:
+M,	DV,	FV_i,	
+
+Count:
+V,	
+
+Pred*:
+fbar_i,	dbar,	abar,	Abar,
+
+Succ*:
+f_i,	d,	a,	A,
+
+Pred:
+a	dbar
+M	abar
+V	a
+DV	d
+FV_i	f_i
+
+Succ:
+abar	d
+M	a
+V	fbar_i	dbar	abar
+
+
+Conn:
+FV_i	f_i	V	DV	d	M

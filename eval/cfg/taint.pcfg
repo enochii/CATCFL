@@ -1,0 +1,41 @@
+Order:
+ret_i,	call_i,	a,	A,	CA_i,	B,	P,	S
+Production:
+S	P
+S	S	B
+S	S	a
+S	S	call_i
+P
+P	P	B
+P	P	a
+P	P	ret_i
+A
+A	A	B
+A	A	a
+B	CA_i	ret_i
+CA_i	call_i	A
+
+Insert:
+A,	S,	P,	B
+
+Follow:
+CA_i,
+
+Count:
+S,
+
+Pred*:
+call_i,	S,	P
+
+Succ*:
+call_i,	ret_i,	B,	a
+
+Pred:
+CA_i	ret_i
+A	call_i	a
+
+Succ:
+A	call_i
+
+Conn:
+CA_i	ret_i	B
