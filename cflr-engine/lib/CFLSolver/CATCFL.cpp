@@ -10,7 +10,7 @@
 using namespace SVF;
 
 
-void CATfCFL::initSolver()
+void CATmCFL::initSolver()
 {
     /// add all edges into adjacency list and worklist
     for (auto edge : graph()->getCFLEdges())
@@ -35,7 +35,7 @@ void CATfCFL::initSolver()
     FocrCFL::postInitSolver();
 }
 
-void CATfCFL::processCFLItem(CFLItem item) {
+void CATmCFL::processCFLItem(CFLItem item) {
     stat->wlIteration ++;
     if (CFLOpt::LStat()) {
         cout << item.src() << " (" << grammar()->getSymbolString(item.label().first) << ") " << item.dst() << endl;
@@ -47,7 +47,7 @@ void CATfCFL::processCFLItem(CFLItem item) {
 }
 
 
-void CATfCFL::processUnary(const CFLItem &item) {
+void CATmCFL::processUnary(const CFLItem &item) {
     if (!item.isUnary())
         return;
 
@@ -55,46 +55,13 @@ void CATfCFL::processUnary(const CFLItem &item) {
         processSingle(item.src(), item.dst(), newTy);
 }
 
-NodeBS CATfCFL::checkAndAddSrcs(const NodeBS &srcSet, NodeID dst, const Label &lbl) {
-    if (!lbl.first)
-        return emptyBS;
 
-    if (CFLOpt::ucfl() && !grammar()->isInsertSymbol(lbl.first))
-        return srcSet;
-    stat->checks += srcSet.count();
-
-    return cflData()->checkAndAddSrcs(srcSet, dst, lbl);
-}
-
-NodeBS CATfCFL::checkAndAddDsts(NodeID src, const NodeBS& dstSet, const Label& lbl) {
-    if (!lbl.first)
-        return emptyBS;
-
-    if (CFLOpt::ucfl() && !grammar()->isInsertSymbol(lbl.first))
-        return dstSet;
-    stat->checks += dstSet.count();
-
-    return cflData()->checkAndAddDsts(src, dstSet, lbl);
-}
-
-void CATfCFL::pushWL(NodeID src, NodeID dst, Label lbl, bool pred, bool succ, bool unary, bool primary) {
+void CATmCFL::pushWL(NodeID src, NodeID dst, Label lbl, bool pred, bool succ, bool unary, bool primary) {
     CFLBase::pushIntoWorklist(CFLItem(src, dst, lbl, primary, pred, succ, unary));
 }
 
-u64_t CATfCFL::getSCnt() {
-    for (auto& it: cflData()->getPredMap()) {
-        NodeID dst = it.first;
-        auto& ref = it.second[Label(grammar()->getStartSymbol(), 0)];
-        SPred[dst] |= ref;
-    }
-    return getSize(SPred);
-}
 
-u64_t CATfCFL::getTotalGDegree() {
-    return cflData()->getGraphDegree() + getSize(SPred);
-}
-
-void CATfCFL::iteratePreds(const CFLItem &item) {
+void CATmCFL::iteratePreds(const CFLItem &item) {
     if (!item.isSucc())
         return;
 
@@ -106,7 +73,7 @@ void CATfCFL::iteratePreds(const CFLItem &item) {
     }
 }
 
-void CATfCFL::iterateSuccs(const CFLItem &item) {
+void CATmCFL::iterateSuccs(const CFLItem &item) {
     if (!item.isPred())
         return;
 
@@ -119,54 +86,8 @@ void CATfCFL::iterateSuccs(const CFLItem &item) {
     }
 }
 
-void CATfCFL::processSrcs(const NodeBS &srcs, NodeID dst, const Label &newTy) {
-    auto symbol = grammar()->getSymbol(newTy.first);
 
-    bool pred = symbol->needPred(dst);
-    if (!symbol->succFree) {
-        NodeBS diffSrcs = checkAndAddEdges(srcs, dst, newTy);
-        for (NodeID diffSrc : diffSrcs) {
-            bool succ = symbol->needSucc(diffSrc);
-            if (pred || succ || symbol->unary)
-                pushWL(diffSrc, dst, newTy, pred, succ, symbol->unary);
-        }
-    } else if (pred) {
-        NodeBS diffSrcs = checkAndAddSrcs(srcs, dst, newTy);
-        for (NodeID diffSrc : diffSrcs)
-            pushWL(diffSrc, dst, newTy, true, false, symbol->unary);
-    } else if (symbol->start) {
-        SPred[dst] |= srcs;
-    } else if (symbol->unary) {
-        cout << "unexpected cases" << endl;
-        exit(0);
-    }
-}
-
-void CATfCFL::processDsts(NodeID src, const NodeBS &dsts, const Label &newTy) {
-    auto symbol = grammar()->getSymbol(newTy.first);
-
-    bool succ = symbol->needSucc(src);
-    if (!symbol->predFree) {
-        NodeBS diffDsts = checkAndAddEdges(src, dsts, newTy);
-        for (NodeID diffDst : diffDsts) {
-            bool pred = symbol->needPred(diffDst);
-            if (succ || pred || symbol->unary)
-                pushWL(src, diffDst, newTy, pred, succ, symbol->unary);
-        }
-    } else if (succ) {
-        NodeBS diffDsts = checkAndAddDsts(src, dsts, newTy);
-        for (NodeID diffDst : diffDsts)
-            pushWL(src, diffDst, newTy, false, true, symbol->unary);
-    } else if (symbol->unary) {
-        for (NodeID dst : dsts)
-            pushWL(src, dst, newTy, false, false, true);
-    } else if (symbol->start) {
-        cout << "unexpected cases" << endl;
-        exit(0);
-    }
-}
-
-void CATfCFL::processSingle(NodeID src, NodeID dst, const Label& newTy) {
+void CATmCFL::processSingle(NodeID src, NodeID dst, const Label& newTy) {
     auto symbol = grammar()->getSymbol(newTy.first);
 
     bool pred = symbol->needPred(dst);
@@ -196,20 +117,8 @@ void CATfCFL::processSingle(NodeID src, NodeID dst, const Label& newTy) {
     }
 }
 
-void CATfCFL::countSumEdges() {
-    stat->degree = cflData()->getLabelDegree();
-    stat->numOfSumEdges = cflData()->getEdgeCnt(false);
-    stat->setStatInt(GRAPH_DEGREE, cflData()->getGraphDegree());
-    stat->setStatInt(TOTAL_G_DEGREE, getTotalGDegree());
-    stat->numOfCountEdges = getSCnt() - graph()->getTotalNodeNum();
 
-    if (CFLOpt::dumpG()) {
-        dumpFinalG(cflData()->getPredMap(), grammar(), false);
-        dumpFinalG(cflData()->getSuccMap(), grammar(), true);
-    }
-}
-
-void CATtCFL::processSrcs(const NodeBS& srcs, NodeID dst, const Label& newTy) {
+void CATmCFL::processSrcs(const NodeBS& srcs, NodeID dst, const Label& newTy) {
     auto symbol = grammar()->getSymbol(newTy.first);
 
     bool pred = symbol->needPred(dst);
@@ -233,7 +142,7 @@ void CATtCFL::processSrcs(const NodeBS& srcs, NodeID dst, const Label& newTy) {
 }
 
 
-void CATtCFL::processDsts(NodeID src, const NodeBS &dsts, const Label &newTy) {
+void CATmCFL::processDsts(NodeID src, const NodeBS &dsts, const Label &newTy) {
     auto symbol = grammar()->getSymbol(newTy.first);
 
     bool succ = symbol->needSucc(src);
@@ -256,37 +165,23 @@ void CATtCFL::processDsts(NodeID src, const NodeBS &dsts, const Label &newTy) {
     }
 }
 
-NodeBS CATtCFL::checkAndAddSrcs(const NodeBS &srcSet, NodeID dst, const Label &lbl, bool start, bool pred) {
-    if (start && !pred) {
-        stat->checks += srcSet.count();
-        auto& bs = SPred[dst];
-        NodeBS newSrcs;
-        newSrcs.intersectWithComplement(srcSet, bs);
-        bs |= newSrcs;
-        return newSrcs;
-    }
-    return CATfCFL::checkAndAddSrcs(srcSet, dst, lbl);
-}
 
-NodeBS CATtCFL::checkAndAddDsts(NodeID src, const NodeBS &dstSet, const Label &lbl, bool start, bool succ) {
-    if (start && !succ) {
-        stat->checks += dstSet.count();
-        auto& bs = SSucc[src];
-        NodeBS newDsts;
-        newDsts.intersectWithComplement(dstSet, bs);
-        bs |= newDsts;
-        return newDsts;
-    }
-    return CATfCFL::checkAndAddDsts(src, dstSet, lbl);
-}
-
-void CATtCFL::countSumEdges() {
+void CATmCFL::countSumEdges() {
     stat->setStatInt("#ExtraSEdges", getSize(SPred) + getSize(SSucc));
     // side-effect... do not change the ordering
-    CATfCFL::countSumEdges();
+    stat->degree = cflData()->getLabelDegree();
+    stat->numOfSumEdges = cflData()->getEdgeCnt(false);
+    stat->setStatInt(GRAPH_DEGREE, cflData()->getGraphDegree());
+    stat->setStatInt(TOTAL_G_DEGREE, getTotalGDegree());
+    stat->numOfCountEdges = getSCnt() - graph()->getTotalNodeNum();
+
+    if (CFLOpt::dumpG()) {
+        dumpFinalG(cflData()->getPredMap(), grammar(), false);
+        dumpFinalG(cflData()->getSuccMap(), grammar(), true);
+    }
 }
 
-u64_t CATtCFL::getSCnt() {
+u64_t CATmCFL::getSCnt() {
     if (CFLOpt::verify()) {
         for (auto& it: cflData()->getSuccMap()) {
             NodeID src = it.first;
@@ -313,9 +208,7 @@ u64_t CATtCFL::getSCnt() {
 //    return cflData()->getEdgeCnt(grammar()->getStartSymbol()) + minorS;
 }
 
-u64_t CATtCFL::getTotalGDegree() {
-    return CATfCFL::getTotalGDegree() + getSize(SSucc);
-}
+
 
 NodeBS CATmCFL::checkAndAddSrcs(const NodeBS &srcSet, NodeID dst, const Label &lbl, bool start, bool pred) {
     if (CFLOpt::ucfl() && !grammar()->isInsertSymbol(lbl.first))
@@ -355,7 +248,7 @@ NodeBS CATmCFL::checkAndAddDsts(NodeID src, const NodeBS &dstSet, const Label &l
 }
 
 u64_t CATmCFL::getTotalGDegree() {
-    return CATtCFL::getTotalGDegree() + minData.getGraphDegree();
+    return cflData()->getGraphDegree() + getSize(SPred) + getSize(SSucc) + minData.getGraphDegree();
 }
 
 bool CATmCFL::query(NodeID src, NodeID dst, const Label &lbl) {
